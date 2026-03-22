@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulk License Generator - GSWS Attendance Face AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .log { font-family: monospace; font-size: 13px; }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+  <div class="max-w-5xl mx-auto p-8">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-4xl font-bold text-green-400">⚡ Bulk License Generator</h1>
+      <a href="https://github.com" target="_blank" class="text-sm text-gray-400 hover:text-white">Hosted on GitHub Pages</a>
+    </div>
+
+    <!-- WARNING -->
+    <div class="bg-red-900 border border-red-700 p-6 rounded-2xl mb-8">
+      <h2 class="text-xl font-bold text-red-300 mb-3">🔴 SECURITY WARNING</h2>
+      <p class="text-red-200">This tool writes directly to Firebase.<br>
+      <strong>TEMPORARILY set your rules to:</strong> <code class="bg-black px-2 py-1 rounded">{"rules":{".read":true,".write":true}}</code><br>
+      After generating licenses → <strong>LOCK RULES IMMEDIATELY</strong> or your database will be public forever.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Controls -->
+      <div class="md:col-span-1 bg-gray-900 p-6 rounded-3xl">
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm mb-2 text-gray-400">Firebase Path</label>
+            <input id="path" value="/Users" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
+          </div>
+
+          <div>
+            <label class="block text-sm mb-2 text-gray-400">Number of Licenses</label>
+            <input id="count" type="number" value="150" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
+          </div>
+
+          <div>
+            <label class="block text-sm mb-2 text-gray-400">Days Valid</label>
+            <input id="days" type="number" value="1" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
+          </div>
+
+          <button onclick="generateBulk()" 
+                  class="w-full bg-green-500 hover:bg-green-600 transition py-5 rounded-2xl text-xl font-bold">
+            🚀 GENERATE & UPLOAD TO FIREBASE
+          </button>
+
+          <button onclick="downloadCSV()" 
+                  id="downloadBtn"
+                  class="hidden w-full bg-gray-700 hover:bg-gray-600 transition py-4 rounded-2xl text-lg">
+            📥 Download CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress & Log -->
+      <div class="md:col-span-2 bg-gray-900 rounded-3xl p-6">
+        <div class="mb-4 flex justify-between">
+          <div class="text-sm text-gray-400">Progress</div>
+          <div id="progressText" class="font-mono text-green-400">0 / 0</div>
+        </div>
+        <div class="h-3 bg-gray-800 rounded-full overflow-hidden mb-6">
+          <div id="progressBar" class="h-full bg-green-500 w-0 transition-all duration-300"></div>
+        </div>
+
+        <div id="log" class="log bg-black h-96 overflow-y-auto p-4 rounded-2xl text-green-300 whitespace-pre-wrap text-sm"></div>
+      </div>
+    </div>
+
+    <!-- Generated Table -->
+    <div class="mt-10">
+      <h2 class="text-2xl font-bold mb-4">Generated Licenses</h2>
+      <div id="tableContainer" class="overflow-x-auto"></div>
+    </div>
+  </div>
+
+  <script>
+    // === FIREBASE CONFIG (your project) ===
+    const firebaseConfig = {
+      databaseURL: "https://finalapp-dc38c-default-rtdb.firebaseio.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let generatedLicenses = [];
+
+    async function generateDeviceId() {
+      const uuid = crypto.randomUUID();
+      const data = new TextEncoder().encode(uuid + Math.random() + Date.now());
+      const hash = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("")
+        .substring(0, 16)
+        .toLowerCase();
+    }
+
+    function generateRandomName() {
+      const suffixes = ["User", "Manju", "Alex", "Ravi", "Priya", "Sam", "Nina", "Raj", "Tina", "Vik", "Anya", "Dev", "Kiran", "Suresh", "Meena"];
+      return "Demo " + suffixes[Math.floor(Math.random() * suffixes.length)];
+    }
+
+    function formatDate(date) {
+      const pad = n => String(n).padStart(2, "0");
+      return `\( {pad(date.getDate())}- \){pad(date.getMonth()+1)}-${date.getFullYear()} \( {pad(date.getHours())}: \){pad(date.getMinutes())}`;
+    }
+
+    async function generateBulk() {
+      const count = parseInt(document.getElementById("count").value) || 150;
+      const days = parseInt(document.getElementById("days").value) || 1;
+      const path = document.getElementById("path").value || "/Users";
+
+      generatedLicenses = [];
+      const log = document.getElementById("log");
+      const progressBar = document.getElementById("progressBar");
+      const progressText = document.getElementById("progressText");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      log.innerHTML = "🚀 Starting bulk generation...\n";
+      progressBar.style.width = "0%";
+
+      for (let i = 0; i < count; i++) {
+        const deviceId = await generateDeviceId();
+        const now = new Date();
+        const expiry = new Date(now);
+        expiry.setDate(expiry.getDate() + days);
+
+        const license = {
+          deviceId: deviceId,
+          name: generateRandomName(),
+          install_date: formatDate(now),
+          expiry_date: formatDate(expiry),
+          status: "active"
+        };
+
+        // Write to Firebase
+        try {
+          await db.ref(path + "/" + deviceId).set({
+            name: license.name,
+            install_date: license.install_date,
+            expiry_date: license.expiry_date,
+            status: "active"
+          });
+          log.innerHTML += `✅ ${deviceId} → uploaded\n`;
+        } catch (e) {
+          log.innerHTML += `❌ ${deviceId} → ${e.message}\n`;
+        }
+
+        generatedLicenses.push(license);
+        const percent = Math.round(((i + 1) / count) * 100);
+        progressBar.style.width = percent + "%";
+        progressText.textContent = `${i + 1} / ${count}`;
+
+        await new Promise(r => setTimeout(r, 250)); // safe delay
+      }
+
+      log.innerHTML += `\n🎉 Finished! ${count} licenses generated and uploaded.\n`;
+      downloadBtn.classList.remove("hidden");
+      renderTable();
+    }
+
+    function renderTable() {
+      let html = `
+        <table class="w-full text-sm">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="p-4 text-left">Device ID</th>
+              <th class="p-4 text-left">Name</th>
+              <th class="p-4 text-left">Install Date</th>
+              <th class="p-4 text-left">Expiry Date</th>
+              <th class="p-4 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800">
+      `;
+      generatedLicenses.forEach(l => {
+        html += `
+          <tr class="hover:bg-gray-800">
+            <td class="p-4 font-mono">${l.deviceId}</td>
+            <td class="p-4">${l.name}</td>
+            <td class="p-4">${l.install_date}</td>
+            <td class="p-4">${l.expiry_date}</td>
+            <td class="p-4 text-green-400">active</td>
+          </tr>
+        `;
+      });
+      html += `</tbody></table>`;
+      document.getElementById("tableContainer").innerHTML = html;
+    }
+
+    function downloadCSV() {
+      let csv = "Device ID,Name,Install Date,Expiry Date,Status\n";
+      generatedLicenses.forEach(l => {
+        csv += `"\( {l.deviceId}"," \){l.name}","\( {l.install_date}"," \){l.expiry_date}","active"\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `licenses_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    // Tailwind script
+    tailwind.config = { content: ["./**/*.{html,js}"] };
+  </script>
+</body>
+</html>
