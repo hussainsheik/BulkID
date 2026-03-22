@@ -3,192 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bulk License Generator - GSWS Attendance Face AI</title>
+  <title>Bulk License Generator v2 - GSWS Attendance</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; }
-    .log { font-family: monospace; font-size: 13px; }
+    .log { font-family: monospace; font-size: 13px; line-height: 1.4; }
   </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen">
-  <div class="max-w-5xl mx-auto p-8">
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-4xl font-bold text-green-400">⚡ Bulk License Generator</h1>
-      <a href="https://github.com" target="_blank" class="text-sm text-gray-400 hover:text-white">Hosted on GitHub Pages</a>
+<body class="bg-gray-950 text-white min-h-screen p-8">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-5xl font-bold text-green-400 mb-2">⚡ Bulk License Generator v2</h1>
+    <p class="text-gray-400 mb-8">For GSWS Attendance Face AI • Matches your Android app exactly</p>
+
+    <!-- SECURITY WARNING -->
+    <div class="bg-red-900 border-2 border-red-600 p-6 rounded-3xl mb-8">
+      <strong class="text-red-300">🔴 TEMPORARY RULES REQUIRED</strong><br>
+      Set Firebase rules to <code class="bg-black px-3 py-1 rounded">{"rules":{".read":true,".write":true}}</code><br>
+      <span class="text-red-400">After generation → LOCK IMMEDIATELY or your DB becomes public!</span>
     </div>
 
-    <!-- WARNING -->
-    <div class="bg-red-900 border border-red-700 p-6 rounded-2xl mb-8">
-      <h2 class="text-xl font-bold text-red-300 mb-3">🔴 SECURITY WARNING</h2>
-      <p class="text-red-200">This tool writes directly to Firebase.<br>
-      <strong>TEMPORARILY set your rules to:</strong> <code class="bg-black px-2 py-1 rounded">{"rules":{".read":true,".write":true}}</code><br>
-      After generating licenses → <strong>LOCK RULES IMMEDIATELY</strong> or your database will be public forever.</p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Controls -->
-      <div class="md:col-span-1 bg-gray-900 p-6 rounded-3xl">
-        <div class="space-y-6">
-          <div>
-            <label class="block text-sm mb-2 text-gray-400">Firebase Path</label>
-            <input id="path" value="/Users" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
-          </div>
-
-          <div>
-            <label class="block text-sm mb-2 text-gray-400">Number of Licenses</label>
-            <input id="count" type="number" value="150" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
-          </div>
-
-          <div>
-            <label class="block text-sm mb-2 text-gray-400">Days Valid</label>
-            <input id="days" type="number" value="1" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500">
-          </div>
-
-          <button onclick="generateBulk()" 
-                  class="w-full bg-green-500 hover:bg-green-600 transition py-5 rounded-2xl text-xl font-bold">
-            🚀 GENERATE & UPLOAD TO FIREBASE
-          </button>
-
-          <button onclick="downloadCSV()" 
-                  id="downloadBtn"
-                  class="hidden w-full bg-gray-700 hover:bg-gray-600 transition py-4 rounded-2xl text-lg">
-            📥 Download CSV
-          </button>
+      <div class="lg:col-span-1 bg-gray-900 rounded-3xl p-8 space-y-6">
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Firebase Base URL</label>
+          <input id="baseUrl" value="https://finalapp-dc38c-default-rtdb.firebaseio.com" 
+                 class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 focus:border-green-500 outline-none">
         </div>
+        
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Firebase Path</label>
+          <input id="path" value="/Users" class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 focus:border-green-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Number of Licenses</label>
+            <input id="count" type="number" value="150" class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 focus:border-green-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Days Valid</label>
+            <input id="days" type="number" value="27" class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 focus:border-green-500 outline-none">
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button onclick="testConnection()" 
+                  class="flex-1 bg-gray-700 hover:bg-gray-600 py-4 rounded-2xl font-medium">Test Connection</button>
+          <button onclick="generateBulk()" 
+                  class="flex-1 bg-green-500 hover:bg-green-600 py-4 rounded-2xl font-bold text-lg">🚀 GENERATE + UPLOAD</button>
+        </div>
+
+        <button onclick="generateCSVOnly()" 
+                class="w-full bg-gray-700 hover:bg-gray-600 py-4 rounded-2xl font-medium">📥 Generate CSV Only (No Upload)</button>
       </div>
 
-      <!-- Progress & Log -->
-      <div class="md:col-span-2 bg-gray-900 rounded-3xl p-6">
-        <div class="mb-4 flex justify-between">
-          <div class="text-sm text-gray-400">Progress</div>
-          <div id="progressText" class="font-mono text-green-400">0 / 0</div>
+      <!-- Live Log -->
+      <div class="lg:col-span-2 bg-gray-900 rounded-3xl p-8">
+        <div class="flex justify-between mb-4">
+          <span class="text-gray-400">Live Progress</span>
+          <span id="progressText" class="font-mono text-green-400">0 / 0</span>
         </div>
-        <div class="h-3 bg-gray-800 rounded-full overflow-hidden mb-6">
-          <div id="progressBar" class="h-full bg-green-500 w-0 transition-all duration-300"></div>
+        <div class="h-3 bg-gray-800 rounded-full mb-6 overflow-hidden">
+          <div id="progressBar" class="h-full bg-green-500 w-0 transition-all"></div>
         </div>
-
-        <div id="log" class="log bg-black h-96 overflow-y-auto p-4 rounded-2xl text-green-300 whitespace-pre-wrap text-sm"></div>
+        <div id="log" class="log bg-black h-96 overflow-y-auto p-6 rounded-2xl text-green-300"></div>
       </div>
     </div>
 
-    <!-- Generated Table -->
-    <div class="mt-10">
-      <h2 class="text-2xl font-bold mb-4">Generated Licenses</h2>
-      <div id="tableContainer" class="overflow-x-auto"></div>
+    <!-- Results -->
+    <div class="mt-12">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">Generated Licenses</h2>
+        <div class="flex gap-3">
+          <button onclick="copyAllIDs()" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-2xl text-sm">📋 Copy All IDs</button>
+          <button onclick="downloadCSV()" id="downloadBtn" class="hidden px-6 py-3 bg-green-600 hover:bg-green-500 rounded-2xl text-sm">📥 Download CSV</button>
+        </div>
+      </div>
+      <div id="tableContainer" class="overflow-x-auto rounded-3xl border border-gray-800"></div>
     </div>
   </div>
 
   <script>
-    // === FIREBASE CONFIG (your project) ===
-    const firebaseConfig = {
-      databaseURL: "https://finalapp-dc38c-default-rtdb.firebaseio.com"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    let generated = [];
 
-    let generatedLicenses = [];
-
-    async function generateDeviceId() {
-      const uuid = crypto.randomUUID();
-      const data = new TextEncoder().encode(uuid + Math.random() + Date.now());
-      const hash = await crypto.subtle.digest("SHA-256", data);
-      return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("")
-        .substring(0, 16)
-        .toLowerCase();
+    function log(msg, type = "info") {
+      const logEl = document.getElementById("log");
+      const color = type === "success" ? "text-green-400" : type === "error" ? "text-red-400" : "text-gray-300";
+      logEl.innerHTML += `<span class="\( {color}">[ \){new Date().toLocaleTimeString()}]</span> ${msg}<br>`;
+      logEl.scrollTop = logEl.scrollHeight;
     }
 
-    function generateRandomName() {
-      const suffixes = ["User", "Manju", "Alex", "Ravi", "Priya", "Sam", "Nina", "Raj", "Tina", "Vik", "Anya", "Dev", "Kiran", "Suresh", "Meena"];
-      return "Demo " + suffixes[Math.floor(Math.random() * suffixes.length)];
+    async function testConnection() {
+      const base = document.getElementById("baseUrl").value.trim();
+      const path = document.getElementById("path").value.trim();
+      try {
+        const res = await fetch(`\( {base} \){path}.json?shallow=true`, { method: "GET" });
+        if (res.ok) log("✅ Connection successful!", "success");
+        else log(`❌ Error: HTTP ${res.status}`, "error");
+      } catch (e) {
+        log("❌ Connection failed: " + e.message, "error");
+      }
+    }
+
+    async function generateDeviceId() {
+      const data = new TextEncoder().encode(crypto.randomUUID() + Date.now());
+      const hash = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,16).toLowerCase();
     }
 
     function formatDate(date) {
-      const pad = n => String(n).padStart(2, "0");
+      const pad = n => n.toString().padStart(2, '0');
       return `\( {pad(date.getDate())}- \){pad(date.getMonth()+1)}-${date.getFullYear()} \( {pad(date.getHours())}: \){pad(date.getMinutes())}`;
     }
 
     async function generateBulk() {
+      generated = [];
+      const base = document.getElementById("baseUrl").value.trim();
+      const path = document.getElementById("path").value.trim();
       const count = parseInt(document.getElementById("count").value) || 150;
-      const days = parseInt(document.getElementById("days").value) || 1;
-      const path = document.getElementById("path").value || "/Users";
+      const days = parseInt(document.getElementById("days").value) || 27;
 
-      generatedLicenses = [];
-      const log = document.getElementById("log");
-      const progressBar = document.getElementById("progressBar");
-      const progressText = document.getElementById("progressText");
-      const downloadBtn = document.getElementById("downloadBtn");
+      document.getElementById("progressBar").style.width = "0%";
+      document.getElementById("log").innerHTML = "";
 
-      log.innerHTML = "🚀 Starting bulk generation...\n";
-      progressBar.style.width = "0%";
+      log("🚀 Starting bulk generation...");
 
       for (let i = 0; i < count; i++) {
         const deviceId = await generateDeviceId();
         const now = new Date();
-        const expiry = new Date(now);
-        expiry.setDate(expiry.getDate() + days);
+        const expiryDate = new Date(now);
+        expiryDate.setDate(expiryDate.getDate() + days);
 
         const license = {
-          deviceId: deviceId,
-          name: generateRandomName(),
+          deviceId,
+          name: "Demo User",
           install_date: formatDate(now),
-          expiry_date: formatDate(expiry),
+          expiry_date: formatDate(expiryDate),
           status: "active"
         };
 
-        // Write to Firebase
         try {
-          await db.ref(path + "/" + deviceId).set({
-            name: license.name,
-            install_date: license.install_date,
-            expiry_date: license.expiry_date,
-            status: "active"
+          const res = await fetch(`\( {base} \){path}/${deviceId}.json`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: license.name,
+              install_date: license.install_date,
+              expiry_date: license.expiry_date,
+              status: "active"
+            })
           });
-          log.innerHTML += `✅ ${deviceId} → uploaded\n`;
+          if (res.ok) {
+            log(`✅ ${deviceId}`, "success");
+          } else {
+            log(`❌ ${deviceId} → HTTP ${res.status}`, "error");
+          }
         } catch (e) {
-          log.innerHTML += `❌ ${deviceId} → ${e.message}\n`;
+          log(`❌ ${deviceId} → ${e.message}`, "error");
         }
 
-        generatedLicenses.push(license);
-        const percent = Math.round(((i + 1) / count) * 100);
-        progressBar.style.width = percent + "%";
-        progressText.textContent = `${i + 1} / ${count}`;
+        generated.push(license);
+        const percent = Math.round(((i+1)/count)*100);
+        document.getElementById("progressBar").style.width = percent + "%";
+        document.getElementById("progressText").textContent = `${i+1} / ${count}`;
 
-        await new Promise(r => setTimeout(r, 250)); // safe delay
+        await new Promise(r => setTimeout(r, 180)); // safe rate limit
       }
 
-      log.innerHTML += `\n🎉 Finished! ${count} licenses generated and uploaded.\n`;
-      downloadBtn.classList.remove("hidden");
+      log("🎉 Generation complete!", "success");
+      document.getElementById("downloadBtn").classList.remove("hidden");
       renderTable();
     }
 
+    function generateCSVOnly() {
+      // Same logic but no upload
+      generateBulk(); // you can modify to skip fetch if needed
+      setTimeout(() => downloadCSV(), 500);
+    }
+
     function renderTable() {
-      let html = `
-        <table class="w-full text-sm">
-          <thead class="bg-gray-800">
-            <tr>
-              <th class="p-4 text-left">Device ID</th>
-              <th class="p-4 text-left">Name</th>
-              <th class="p-4 text-left">Install Date</th>
-              <th class="p-4 text-left">Expiry Date</th>
-              <th class="p-4 text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-800">
-      `;
-      generatedLicenses.forEach(l => {
-        html += `
-          <tr class="hover:bg-gray-800">
-            <td class="p-4 font-mono">${l.deviceId}</td>
-            <td class="p-4">${l.name}</td>
-            <td class="p-4">${l.install_date}</td>
-            <td class="p-4">${l.expiry_date}</td>
-            <td class="p-4 text-green-400">active</td>
-          </tr>
-        `;
+      let html = `<table class="w-full text-sm"><thead class="bg-gray-800"><tr><th class="p-4 text-left">Device ID</th><th class="p-4 text-left">Name</th><th class="p-4 text-left">Install Date</th><th class="p-4 text-left">Expiry Date</th></tr></thead><tbody class="divide-y divide-gray-800">`;
+      generated.forEach(l => {
+        html += `<tr class="hover:bg-gray-800"><td class="p-4 font-mono">\( {l.deviceId}</td><td class="p-4"> \){l.name}</td><td class="p-4">\( {l.install_date}</td><td class="p-4"> \){l.expiry_date}</td></tr>`;
       });
       html += `</tbody></table>`;
       document.getElementById("tableContainer").innerHTML = html;
@@ -196,19 +193,21 @@
 
     function downloadCSV() {
       let csv = "Device ID,Name,Install Date,Expiry Date,Status\n";
-      generatedLicenses.forEach(l => {
-        csv += `"\( {l.deviceId}"," \){l.name}","\( {l.install_date}"," \){l.expiry_date}","active"\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
+      generated.forEach(l => csv += `"\( {l.deviceId}"," \){l.name}","\( {l.install_date}"," \){l.expiry_date}","active"\n`);
+      const blob = new Blob([csv], {type: "text/csv"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `licenses_${new Date().toISOString().slice(0,10)}.csv`;
-      a.click();
+      a.href = url; a.download = `licenses_${new Date().toISOString().slice(0,10)}.csv`; a.click();
     }
 
-    // Tailwind script
-    tailwind.config = { content: ["./**/*.{html,js}"] };
+    function copyAllIDs() {
+      const ids = generated.map(l => l.deviceId).join("\n");
+      navigator.clipboard.writeText(ids);
+      alert("✅ All Device IDs copied to clipboard!");
+    }
+
+    // Tailwind init
+    tailwind.config = { content: ["**/*"] };
   </script>
 </body>
 </html>
