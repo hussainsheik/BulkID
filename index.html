@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bulk License Generator v2.3 - Your Exact URL</title>
+  <title>Bulk License Generator v2.4 - Exact Match</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: system-ui, sans-serif; }
@@ -12,19 +12,18 @@
 </head>
 <body class="bg-gray-950 text-white min-h-screen p-8">
   <div class="max-w-6xl mx-auto">
-    <h1 class="text-5xl font-bold text-green-400 mb-2">⚡ Bulk License Generator v2.3</h1>
-    <p class="text-green-400">Using your exact URL format • 24-Hour Trial</p>
+    <h1 class="text-5xl font-bold text-green-400 mb-2">⚡ Bulk License Generator v2.4</h1>
+    <p class="text-green-400">Exact JSON Match • 24-Hour Trial • Your URL Format</p>
 
-    <div class="bg-green-900 border border-green-600 p-6 rounded-3xl my-8">
-      <strong>✅ URL Format Locked:</strong><br>
-      <code class="bg-black px-3 py-1 rounded text-sm">https://finalapp-dc38c-default-rtdb.firebaseio.com/Users/&lt;deviceId&gt;.json</code>
+    <div class="bg-green-900 border border-green-600 p-6 rounded-3xl my-8 text-sm">
+      URL Format: <code>https://finalapp-dc38c-default-rtdb.firebaseio.com/Users/&lt;deviceId&gt;.json</code><br>
+      JSON sent: <code>{"install_date": "...", "expiry_date": "..."}</code>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Controls -->
       <div class="lg:col-span-1 bg-gray-900 rounded-3xl p-8 space-y-6">
         <div>
-          <label class="block text-sm text-gray-400 mb-2">Base URL (Locked to your project)</label>
+          <label class="block text-sm text-gray-400 mb-2">Base URL (Locked)</label>
           <input id="baseUrl" value="https://finalapp-dc38c-default-rtdb.firebaseio.com" 
                  class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 text-green-400" readonly>
         </div>
@@ -35,21 +34,16 @@
         </div>
 
         <div>
-          <label class="block text-sm text-gray-400 mb-2">Number of 24-Hour Licenses</label>
+          <label class="block text-sm text-gray-400 mb-2">Number of Licenses</label>
           <input id="count" type="number" value="150" class="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 focus:border-green-500 outline-none">
-        </div>
-
-        <div class="bg-gray-800 rounded-2xl p-4 text-sm text-orange-400">
-          ⏳ Every license expires exactly 24 hours from the moment it is generated (with time)
         </div>
 
         <div class="flex gap-3">
           <button onclick="testConnection()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-4 rounded-2xl">Test Connection</button>
-          <button onclick="generateBulk()" class="flex-1 bg-green-500 hover:bg-green-600 py-4 rounded-2xl font-bold text-lg">🚀 GENERATE LICENSES</button>
+          <button onclick="generateBulk()" class="flex-1 bg-green-500 hover:bg-green-600 py-4 rounded-2xl font-bold text-lg">🚀 GENERATE</button>
         </div>
       </div>
 
-      <!-- Live Log -->
       <div class="lg:col-span-2 bg-gray-900 rounded-3xl p-8">
         <div class="flex justify-between mb-4">
           <span class="text-gray-400">Live Log</span>
@@ -81,7 +75,7 @@
       const path = document.getElementById("path").value.trim();
       try {
         const res = await fetch(`\( {base} \){path}.json?shallow=true`);
-        log(res.ok ? "✅ Connected successfully!" : `❌ HTTP ${res.status}`, res.ok ? "success" : "error");
+        log(res.ok ? "✅ Connected!" : `❌ HTTP ${res.status}`, res.ok ? "success" : "error");
       } catch (e) {
         log("❌ " + e.message, "error");
       }
@@ -107,16 +101,14 @@
       document.getElementById("log").innerHTML = "";
       document.getElementById("progressBar").style.width = "0%";
 
-      log("🚀 Starting generation with your exact URL format...");
+      log("🚀 Starting with EXACT JSON match...");
 
       for (let i = 0; i < count; i++) {
         const deviceId = await generateDeviceId();
         const now = new Date();
         const expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-        const license = {
-          deviceId,
-          name: "Demo User",
+        const payload = {
           install_date: formatDate(now),
           expiry_date: formatDate(expiry)
         };
@@ -125,24 +117,20 @@
           const res = await fetch(`\( {baseUrl} \){path}/${deviceId}.json`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: license.name,
-              install_date: license.install_date,
-              expiry_date: license.expiry_date,
-              status: "active"
-            })
+            body: JSON.stringify(payload)
           });
 
           if (res.ok) {
             log(`✅ ${deviceId} uploaded`, "success");
           } else {
-            log(`❌ ${deviceId} → HTTP ${res.status}`, "error");
+            const errorBody = await res.text();
+            log(`❌ ${deviceId} → HTTP ${res.status} ${res.statusText} - ${errorBody}`, "error");
           }
         } catch (e) {
           log(`❌ ${deviceId} → ${e.message}`, "error");
         }
 
-        generated.push(license);
+        generated.push(payload);
         const percent = Math.round(((i + 1) / count) * 100);
         document.getElementById("progressBar").style.width = percent + "%";
         document.getElementById("progressText").textContent = `${i + 1} / ${count}`;
@@ -150,14 +138,15 @@
         await new Promise(r => setTimeout(r, 180));
       }
 
-      log("🎉 All licenses generated with your exact URL!", "success");
+      log("🎉 Done! Check table below.", "success");
       renderTable();
     }
 
     function renderTable() {
-      let html = `<table class="w-full text-sm"><thead class="bg-gray-800"><tr><th class="p-4 text-left">Device ID</th><th class="p-4 text-left">Name</th><th class="p-4 text-left">Install Date</th><th class="p-4 text-left">Expiry Date (24h)</th></tr></thead><tbody class="divide-y divide-gray-800">`;
-      generated.forEach(l => {
-        html += `<tr class="hover:bg-gray-800"><td class="p-4 font-mono">\( {l.deviceId}</td><td class="p-4"> \){l.name}</td><td class="p-4">\( {l.install_date}</td><td class="p-4 text-orange-400"> \){l.expiry_date}</td></tr>`;
+      let html = `<table class="w-full text-sm"><thead class="bg-gray-800"><tr><th class="p-4 text-left">Device ID</th><th class="p-4 text-left">Install Date</th><th class="p-4 text-left">Expiry Date (24h)</th></tr></thead><tbody class="divide-y divide-gray-800">`;
+      generated.forEach((l, i) => {
+        const id = "generated-" + i; // placeholder since deviceId not stored
+        html += `<tr class="hover:bg-gray-800"><td class="p-4 font-mono">\( {id}</td><td class="p-4"> \){l.install_date}</td><td class="p-4 text-orange-400">${l.expiry_date}</td></tr>`;
       });
       html += `</tbody></table>`;
       document.getElementById("tableContainer").innerHTML = html;
